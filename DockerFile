@@ -1,0 +1,68 @@
+# ./Dockerfile
+
+# ======= Shared base =======
+ARG NODE_IMAGE=node:lts-alpine
+FROM ${NODE_IMAGE} AS base
+
+# Re-declare build args in each stage that needs them
+ARG FE_DIR=frontend
+ARG BE_DIR=backend
+
+WORKDIR /app
+RUN apk add --no-cache python3 make g++ && corepack enable && corepack prepare pnpm@9.12.0 --activate
+ENV NODE_ENV=production
+
+# ======= FRONTEND (Nuxt) =======
+FROM ${NODE_IMAGE} AS fe_deps
+ARG FE_DIR=frontend
+WORKDIR /app/${FE_DIR}
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+# copy only manifests first for cache
+COPY ${FE_DIR}/package.json ${FE_DIR}/pnpm-lock.yaml* ./
+# BuildKit cache for pnpm store
+RUN --mount=type=cache,id=pnpmstore_fe,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+
+FROM fe_deps AS fe_build
+ARG FE_DIR=frontend
+WORKDIR /app/${FE_DIR}
+COPY ${FE_DIR}/ .
+ENV NUXT_TELEMETRY_DISABLED=1
+RUN pnpm build
+
+FROM ${NODE_IMAGE} AS fe_runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=fe_build /app/${FE_DIR}/.output ./.output
+EXPOSE 3000
+CMD ["node", ".output/server/index.mjs"]
+
+# ======= BACKEND (Strapi 5) =======
+FROM ${NODE_IMAGE} AS be_deps
+ARG BE_DIR=backend
+WORKDIR /app/${BE_DIR}
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+COPY ${BE_DIR}/package.json ${BE_DIR}/pnpm-lock.yaml* ./
+RUN --mount=type=cache,id=pnpmstore_be,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-workspace
+
+FROM be_deps AS be_build
+ARG BE_DIR=backend
+WORKDIR /app/${BE_DIR}
+COPY ${BE_DIR}/ .
+# Build Strapi admin
+
+ENV NODE_ENV=development
+RUN --mount=type=cache,target=/app/${BE_DIR}/.cache pnpm --ignore-workspace build
+ENV NODE_ENV=production
+RUN pnpm --ignore-workspace prune --prod
+
+FROM ${NODE_IMAGE} AS be_runner
+WORKDIR /opt/app
+ENV NODE_ENV=production
+ARG BE_DIR=backend
+# Copy runtime essentials
+COPY --from=be_build /app/${BE_DIR}/ .
+COPY --from=be_build /app/${BE_DIR}/node_modules ./node_modules
+
+EXPOSE 1337
+CMD ["node", "node_modules/.bin/strapi", "start"]

@@ -1,0 +1,24 @@
+# VCS / OS
+.git
+.gitignore
+.DS_Store
+
+# Node
+**/node_modules
+**/.pnpm-store
+npm-debug.log*
+pnpm-debug.log*
+
+# Nuxt
+frontend/.output
+frontend/.nuxt
+
+# Strapi
+backend/.cache
+backend/build
+backend/public/uploads
+backend/.tmp
+
+# Editor junk
+.vscode
+.idea

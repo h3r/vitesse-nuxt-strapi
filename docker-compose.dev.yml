@@ -1,0 +1,83 @@
+## 
+## docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+##
+
+# docker-compose.dev.yml
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fe_deps
+      args:
+        FE_DIR: ${FE_DIR:-frontend}
+        NODE_IMAGE: ${NODE_IMAGE:-node:lts-alpine}
+    command: ["pnpm","--dir","/app/${FE_DIR:-frontend}","dev","--host","0.0.0.0","--port","3000"]
+    working_dir: /app/${FE_DIR:-frontend}
+    environment:
+      NUXT_PORT: ${NUXT_PORT:-3000}
+      NITRO_PORT: ${NUXT_PORT:-3000}
+    volumes:
+      - ./${FE_DIR:-frontend}:/app/${FE_DIR:-frontend}
+      - /app/${FE_DIR:-frontend}/node_modules
+    ports:
+      - "${NUXT_PORT:-3000}:3000"
+    depends_on: [backend]
+    networks: [appnet]
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: be_deps
+      args:
+        BE_DIR: ${BE_DIR:-backend}
+        NODE_IMAGE: ${NODE_IMAGE:-node:lts-alpine}
+    command: ["pnpm","--dir","/app/${BE_DIR:-backend}","develop","--watch-admin"]
+    working_dir: /app/${BE_DIR:-backend}
+    environment:
+      NODE_ENV: development
+      DATABASE_CLIENT: sqlite
+      DATABASE_FILENAME: /app/${BE_DIR:-backend}/.tmp/data.db
+      APP_KEYS: ${STRAPI_APP_KEYS}
+      API_TOKEN_SALT: ${STRAPI_API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${STRAPI_ADMIN_JWT_SECRET}
+      JWT_SECRET: ${STRAPI_JWT_SECRET}
+      URL: ${STRAPI_URL:-http://localhost:1337}
+    volumes:
+      - ./${BE_DIR:-backend}:/app/${BE_DIR:-backend}
+      - /app/${BE_DIR:-backend}/node_modules
+      - strapi_uploads:/app/${BE_DIR:-backend}/public/uploads
+      - strapi_data:/app/${BE_DIR:-backend}/.tmp
+    ports:
+      - "${STRAPI_PORT:-1337}:1337"
+    networks: [appnet]
+
+  code:
+    image: ghcr.io/coder/code-server:latest
+    depends_on: [frontend, backend]
+    environment:
+      PASSWORD: ${CODE_SERVER_PASSWORD}
+    user: "${PUID:-99}:${PGID:-100}"
+    working_dir: /home/coder/workspace
+    command: >
+      --auth password
+      --bind-addr 0.0.0.0:8080
+      /home/coder/workspace
+    volumes:
+      # open the whole project so you can edit both frontend & backend
+      - ${PROJECT_DIR}:/home/coder/workspace
+      # persist code-server settings/extensions in appdata
+      - ${APPDATA}/code-server:/home/coder/.local/share/code-server
+    ports:
+      - "${CODE_SERVER_PORT:-3001}:8080"
+    networks: [appnet]
+
+networks:
+  appnet: {}
+
+volumes:
+  strapi_uploads: {}
+  strapi_data: {}
