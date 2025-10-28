@@ -1,22 +1,22 @@
 # Vitesse + Nuxt 4 + Strapi 5
 
 <table>
-   <tr>
-      <td align="center">
+   <tr style="border: none;">
+      <td align="center" style="border: none;">
          <a href="https://github.com/antfu/vitesse" target="_blank" rel="noopener noreferrer">
             <img src="./frontend/public/vite.png" alt="Vitesse" width="700" />
             <span><em>Vitesse</em></span>
          </a>
       </td>
-      <td align="center"> <span style="font-size:30px">+</span> </td>
-      <td align="center">
+      <td align="center" style="border: none;"> <span style="font-size:30px">+</span> </td>
+      <td align="center" style="border: none;">
          <a href="https://nuxt.com/docs" target="_blank" rel="noopener noreferrer">
             <img src="./frontend/public/nuxt.svg" alt="NuxtJS 4" width="700" />
             <span><em>NuxtJS 4</em></span>
          </a>
       </td>
-      <td align="center"> <span style="font-size:30px">+</span> </td>
-      <td align="center">
+      <td align="center" style="border: none;"> <span style="font-size:30px">+</span> </td>
+      <td align="center" style="border: none;">
          <a href="https://docs.strapi.io" target="_blank" rel="noopener noreferrer">
             <img src="./frontend/public/strapi.png" alt="Strapi 5" width="700" />
             <span><em>Strapi v5</em></span>
